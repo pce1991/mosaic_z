@@ -118,7 +118,7 @@ void MyMosaicInit() {
 #endif
 
     LoadZSpriteFromFile("data/sprites/tree_big_2.png", &GM.treeSprite, &GM.arena);
-    LoadZSpriteFromFile("data/sprites/grass_1.png", &GM.grassSprite, &GM.arena);
+    LoadZSpriteFromFile("data/sprites/grass_2.png", &GM.grassSprite, &GM.arena);
     LoadZSpriteFromFile("data/sprites/rock_1.png", &GM.rockSprite, &GM.arena);
     LoadZSpriteFromFile("data/sprites/pool_1.png", &GM.poolSprite, &GM.arena);
 
