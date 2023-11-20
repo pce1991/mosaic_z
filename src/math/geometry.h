@@ -801,17 +801,29 @@ bool TestAABBAABB(vec2 aMin, vec2 aMax, vec2 bMin, vec2 bMax, vec2 *dir) {
     return true;
 }
 
-vec2 ClosestPointOnAABB(vec2 pt, vec2 min, vec2 max) {
-    return Clamp(pt, min, max);
+// vec2 ClosestPointOnAABB(vec2 pt, vec2 min, vec2 max) {
+//     return Clamp(pt, min, max);
+// }
+
+inline vec2 ClosestPointOnAABB(vec2 pt, vec2 min, vec2 max) {
+    vec2 result = {};
+    for (int i = 0; i < 2; i++) {
+        real32 v = pt.data[i];
+        if (v < min.data[i]) { v = min.data[i]; }
+        if (v > max.data[i]) { v = max.data[i]; }
+        result.data[i] = v;
+    }
+
+    return result;
 }
 
-bool TestSphereAABB(vec2 center, real32 radius, vec2 min, vec2 max, vec2 *disp) {
-    vec2 closestPt = ClosestPtOnAABB(center, min, max);
+bool TestCircleAABB(vec2 center, real32 radius, vec2 min, vec2 max, vec2 *disp) {
+    vec2 closestPt = ClosestPointOnAABB(center, min, max);
 
     real32 distToPoint = LengthSq(closestPt - center);
 
     if (distToPoint < radius * radius) {
-        if (PointInAABB(center, min, max)) {
+        if (TestPointAABB(center, min, max)) {
             vec2 clampedPt = closestPt;
 
             real32 minDist = INFINITY;
@@ -837,7 +849,9 @@ bool TestSphereAABB(vec2 center, real32 radius, vec2 min, vec2 max, vec2 *disp) 
             disp->data[axisIndex] = axisSign * minDist;
         }
         else {
-            *disp = center - closestPt;
+            vec2 normal = Normalize(center - closestPt);
+            vec2 pointOnCircle = center + (-normal * radius);
+            *disp = normal * Length(pointOnCircle - closestPt);
         }
 
         return true;

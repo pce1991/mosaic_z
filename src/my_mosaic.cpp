@@ -204,8 +204,11 @@ void MyMosaicInit() {
     {
         Rock *rock = &GM.rock;
         rock->position = TilePositionToPixel(12, 9);
-        rock->min = V2(0, 6);
-        rock->max = V2(14, 16);
+        // rock->min = V2(0, 6);
+        // rock->max = V2(14, 16);
+
+        rock->min = V2(1, 8);
+        rock->max = V2(15, 16);
     }
 }
 
@@ -213,8 +216,8 @@ void DrawCollider_AABB(vec2 position, vec2 min, vec2 max, vec4 color) {
     vec2 dim = max - min;
 
     for (int y = 0; y < dim.y; y++) {
-        for (int x = 0; x < dim.y; x++) {
-            SetTileColor(position + V2(x, y), color);
+        for (int x = 0; x < dim.x; x++) {
+            SetTileColor(position + V2(x, y) + min, color);
         }
     }
 }
@@ -267,7 +270,8 @@ void DetectCollisions() {
     //     player->position = player->position + dir;
     // }
 
-    if (TestSphereAABB(playerCenterWorld, player->radius, rockMinWorld, rockMaxWorld, &dir)) {
+    if (TestCircleAABB(playerCenterWorld, player->radius, rockMinWorld, rockMaxWorld, &dir)) {
+        TestCircleAABB(playerCenterWorld, player->radius, rockMinWorld, rockMaxWorld, &dir);
         player->position = player->position + dir;
     }
 }
