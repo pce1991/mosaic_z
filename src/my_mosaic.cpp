@@ -114,6 +114,9 @@ struct Entity {
 
     vec2 min;
     vec2 max;
+
+    vec2 center;
+    real32 radius;
 };
 
 struct Player : Entity {
@@ -193,13 +196,26 @@ void MyMosaicInit() {
         player->position = V2(100, 200);
         player->min = V2(0);
         player->max = V2(16, 16);
+
+        player->center = V2(8, 8);
+        player->radius = 8;
     }
 
     {
         Rock *rock = &GM.rock;
         rock->position = TilePositionToPixel(12, 9);
-        rock->min = V2(0);
-        rock->max = V2(16, 16);
+        rock->min = V2(0, 6);
+        rock->max = V2(14, 16);
+    }
+}
+
+void DrawCollider_AABB(vec2 position, vec2 min, vec2 max, vec4 color) {
+    vec2 dim = max - min;
+
+    for (int y = 0; y < dim.y; y++) {
+        for (int x = 0; x < dim.y; x++) {
+            SetTileColor(position + V2(x, y), color);
+        }
     }
 }
 
@@ -238,6 +254,8 @@ void DetectCollisions() {
     Player *player = &GM.player;
     Rock *rock = &GM.rock;
 
+    vec2 playerCenterWorld = player->position + player->center;
+    
     vec2 playerMinWorld = player->position + player->min;
     vec2 playerMaxWorld = player->position + player->max;
 
@@ -245,7 +263,11 @@ void DetectCollisions() {
     vec2 rockMaxWorld = rock->position + rock->max;
 
     vec2 dir = V2(0);
-    if (TestAABBAABB(playerMinWorld, playerMaxWorld, rockMinWorld, rockMaxWorld, &dir)) {
+    // if (TestAABBAABB(playerMinWorld, playerMaxWorld, rockMinWorld, rockMaxWorld, &dir)) {
+    //     player->position = player->position + dir;
+    // }
+
+    if (TestSphereAABB(playerCenterWorld, player->radius, rockMinWorld, rockMaxWorld, &dir)) {
         player->position = player->position + dir;
     }
 }
@@ -287,7 +309,6 @@ void MyMosaicUpdate() {
         }
     }
 
-    
-    
+    DrawCollider_AABB(GM.rock.position, GM.rock.min, GM.rock.max, V4(0.5f, 0.0f, 0.0f, 1.0f)); 
 }
 

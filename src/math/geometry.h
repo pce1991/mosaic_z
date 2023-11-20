@@ -800,3 +800,48 @@ bool TestAABBAABB(vec2 aMin, vec2 aMax, vec2 bMin, vec2 bMax, vec2 *dir) {
 
     return true;
 }
+
+vec2 ClosestPointOnAABB(vec2 pt, vec2 min, vec2 max) {
+    return Clamp(pt, min, max);
+}
+
+bool TestSphereAABB(vec2 center, real32 radius, vec2 min, vec2 max, vec2 *disp) {
+    vec2 closestPt = ClosestPtOnAABB(center, min, max);
+
+    real32 distToPoint = LengthSq(closestPt - center);
+
+    if (distToPoint < radius * radius) {
+        if (PointInAABB(center, min, max)) {
+            vec2 clampedPt = closestPt;
+
+            real32 minDist = INFINITY;
+            real32 axisSign = 1;
+            int32 axisIndex = -1;
+            for (int i = 0; i < 2; i++) {
+                real32 v1 = center.data[i] - min.data[i];
+                real32 v2 = max.data[i] - center.data[i];
+
+                if (v1 < minDist) {
+                    axisIndex = i;
+                    minDist = v1;
+                    axisSign = -1;
+                }
+
+                if (v2 < minDist) {
+                    axisIndex = i;
+                    minDist = v2;
+                    axisSign = 1;
+                }
+            }
+
+            disp->data[axisIndex] = axisSign * minDist;
+        }
+        else {
+            *disp = center - closestPt;
+        }
+
+        return true;
+    }
+
+    return false;
+}
