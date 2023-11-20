@@ -83,14 +83,19 @@ void LoadZSpriteFromFile(char *path, ZSprite *sprite, MemoryArena *arena) {
 struct GameMem {
     MemoryArena arena;
     MemoryArena frameMem;
-    
-    ZSprite sprite;
+
+    ZSprite heroSprite;
+
+    ZSprite treeSprite;
+    ZSprite grassSprite;
+    ZSprite rockSprite;
+    ZSprite poolSprite;
 };
 
 GameMem GM = {};
 
 void MyMosaicInit() {
-    SetMosaicGridSize(256, 244);
+    SetMosaicGridSize(256, 256);
 
     AllocateMemoryArena(&GM.arena, Megabytes(64));
     AllocateMemoryArena(&GM.frameMem, Megabytes(16));
@@ -112,7 +117,13 @@ void MyMosaicInit() {
     }
 #endif
 
-    LoadZSpriteFromFile("data/sprites/tree_1.png", &GM.sprite, &GM.arena);
+    LoadZSpriteFromFile("data/sprites/tree_big_2.png", &GM.treeSprite, &GM.arena);
+    LoadZSpriteFromFile("data/sprites/grass_1.png", &GM.grassSprite, &GM.arena);
+    LoadZSpriteFromFile("data/sprites/rock_1.png", &GM.rockSprite, &GM.arena);
+    LoadZSpriteFromFile("data/sprites/pool_1.png", &GM.poolSprite, &GM.arena);
+
+    LoadZSpriteFromFile("data/sprites/hero_down.png", &GM.heroSprite, &GM.arena);
+    
 }
 
 vec2 TilePositionToPixel(int32 x, int32 y) {
@@ -120,12 +131,36 @@ vec2 TilePositionToPixel(int32 x, int32 y) {
 }
 
 void MyMosaicUpdate() {
-    ClearTiles(V4(0.08f, 0.5f, 0.17f, 1.0f));
+    //ClearTiles(V4(0.08f, 0.5f, 0.17f, 1.0f));
+
+    int32 Columns = 256 / 16;
+    int32 Rows = 256 / 16;
+
+    for (int y = 0; y < Rows; y++) {
+        for (int x = 0; x < Columns; x++) {
+            DrawSprite(TilePositionToPixel(x, y), &GM.grassSprite);        
+        }
+    }
+
+    DrawSprite(V2((sinf(Time * 0.1f) * 100) + 100, 140), &GM.heroSprite);        
+
+    DrawSprite(TilePositionToPixel(12, 9), &GM.rockSprite);
+    DrawSprite(TilePositionToPixel(8, 12), &GM.rockSprite);
+    DrawSprite(TilePositionToPixel(9, 12), &GM.rockSprite);
+
+    DrawSprite(TilePositionToPixel(3, 14), &GM.poolSprite);
+    DrawSprite(TilePositionToPixel(4, 14), &GM.poolSprite);
+    DrawSprite(TilePositionToPixel(5, 14), &GM.poolSprite);
+    DrawSprite(TilePositionToPixel(4, 13), &GM.poolSprite);
+    DrawSprite(TilePositionToPixel(5, 13), &GM.poolSprite); 
 
     for (int y = 0; y < 4; y++) {
         for (int x = 0; x < 10; x++) {
-            DrawSprite(TilePositionToPixel(x, y), &GM.sprite);
+            DrawSprite(TilePositionToPixel(x * 2, y * 2), &GM.treeSprite);
         }
     }
+
+    
+    
 }
 

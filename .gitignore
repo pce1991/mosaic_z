@@ -1,6 +1,8 @@
 build/
 output/
 
+*.png~
+
 # Prerequisites
 *.d
 
