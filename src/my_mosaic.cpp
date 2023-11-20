@@ -9,6 +9,8 @@
    NPC interactions
    Cleanly separate level definition from level state
    Entities that arent just 1 tiles
+
+   Switch cooridnate system to be bottom left ugh
 */
 
 int32 const TileWidth = 16;
@@ -19,6 +21,12 @@ struct ZSprite {
     int32 height;
     vec4 *colors;
 };
+
+
+vec2 TilePositionToPixel(int32 x, int32 y) {
+    return V2(x * TileWidth, y * TileHeight);
+}
+
 
 void DrawSprite(vec2 pos, ZSprite *sprite) {
     int32 index = 0;
@@ -80,9 +88,64 @@ void LoadZSpriteFromFile(char *path, ZSprite *sprite, MemoryArena *arena) {
     free(data);
 }
 
+enum Direction {
+                East,
+                North,
+                West,
+                South,
+};
+
+struct Level {
+    
+};
+
+struct LevelState {
+    
+};
+
+enum EntityType {
+                 EntityType_Entity,
+                 EntityType_Player,
+                 EntityType_Rock,
+};
+
+struct Entity {
+    vec2 position;
+
+    vec2 min;
+    vec2 max;
+};
+
+struct Player : Entity {
+    int32 levelIndex;
+    
+    int8 health;
+    Direction facingDir;
+
+    real32 moveTimer;
+};
+
+struct Rock : Entity {
+    
+};
+
+    
+struct CollisionEvent {
+    Entity *a;
+    Entity *b;
+};
+
+struct Physics {
+    DynamicArray<CollisionEvent> events;
+};
+
 struct GameMem {
     MemoryArena arena;
     MemoryArena frameMem;
+
+    Player player;
+
+    Rock rock;
 
     ZSprite heroSprite;
 
@@ -123,12 +186,70 @@ void MyMosaicInit() {
     LoadZSpriteFromFile("data/sprites/pool_1.png", &GM.poolSprite, &GM.arena);
 
     LoadZSpriteFromFile("data/sprites/hero_down.png", &GM.heroSprite, &GM.arena);
-    
+
+
+    {
+        Player *player = &GM.player;
+        player->position = V2(100, 200);
+        player->min = V2(0);
+        player->max = V2(16, 16);
+    }
+
+    {
+        Rock *rock = &GM.rock;
+        rock->position = TilePositionToPixel(12, 9);
+        rock->min = V2(0);
+        rock->max = V2(16, 16);
+    }
 }
 
-vec2 TilePositionToPixel(int32 x, int32 y) {
-    return V2(x * TileWidth, y * TileHeight);
+void PlayerUpdate(Player *player) {
+    vec2 moveDir = V2(0);
+
+    if (InputHeld(Keyboard, Input_LeftArrow)) {
+        moveDir.x = -1;
+    }
+    else if (InputHeld(Keyboard, Input_RightArrow)) {
+        moveDir.x = 1;
+    }
+    if (InputHeld(Keyboard, Input_UpArrow)) {
+        moveDir.y = -1;
+    }
+    else if (InputHeld(Keyboard, Input_DownArrow)) {
+        moveDir.y = 1;
+    }
+
+    if (Abs(moveDir.x) > 0 || Abs(moveDir.y) > 0) {
+        player->moveTimer += DeltaTime;
+    }
+
+    // real32 pixelsPerSecond = 48;
+    // real32 moveRate = 1.0f / pixelsPerSecond;
+    // if (player->moveTimer >= moveRate) {
+    //     player->moveTimer -= moveRate;
+    //     player->position = player->position + moveDir;
+    // }
+
+    player->position = player->position + (moveDir * 48 * DeltaTime);
 }
+
+
+void DetectCollisions() {
+    Player *player = &GM.player;
+    Rock *rock = &GM.rock;
+
+    vec2 playerMinWorld = player->position + player->min;
+    vec2 playerMaxWorld = player->position + player->max;
+
+    vec2 rockMinWorld = rock->position + rock->min;
+    vec2 rockMaxWorld = rock->position + rock->max;
+
+    vec2 dir = V2(0);
+    if (TestAABBAABB(playerMinWorld, playerMaxWorld, rockMinWorld, rockMaxWorld, &dir)) {
+        player->position = player->position + dir;
+    }
+}
+
 
 void MyMosaicUpdate() {
     //ClearTiles(V4(0.08f, 0.5f, 0.17f, 1.0f));
@@ -136,17 +257,23 @@ void MyMosaicUpdate() {
     int32 Columns = 256 / 16;
     int32 Rows = 256 / 16;
 
+    PlayerUpdate(&GM.player);
+
+    DetectCollisions();
+
     for (int y = 0; y < Rows; y++) {
         for (int x = 0; x < Columns; x++) {
             DrawSprite(TilePositionToPixel(x, y), &GM.grassSprite);        
         }
     }
 
-    DrawSprite(V2((sinf(Time * 0.1f) * 100) + 100, 140), &GM.heroSprite);        
+    DrawSprite(GM.player.position, &GM.heroSprite);
 
-    DrawSprite(TilePositionToPixel(12, 9), &GM.rockSprite);
-    DrawSprite(TilePositionToPixel(8, 12), &GM.rockSprite);
-    DrawSprite(TilePositionToPixel(9, 12), &GM.rockSprite);
+    // DrawSprite(TilePositionToPixel(12, 9), &GM.rockSprite);
+    // DrawSprite(TilePositionToPixel(8, 12), &GM.rockSprite);
+    // DrawSprite(TilePositionToPixel(9, 12), &GM.rockSprite);
+
+    DrawSprite(GM.rock.position, &GM.rockSprite);
 
     DrawSprite(TilePositionToPixel(3, 14), &GM.poolSprite);
     DrawSprite(TilePositionToPixel(4, 14), &GM.poolSprite);
