@@ -12,6 +12,7 @@
 
    Switch cooridnate system to be bottom left ugh
 
+   Draw sprites centered on a position but that seems tricky when our sprites are even dimensions. Oh well as long as our center position is fractional that's fine. 
    
 */
 
@@ -95,6 +96,7 @@ enum Direction {
                 North,
                 West,
                 South,
+                Direction_Count,
 };
 
 struct Level {
@@ -130,6 +132,11 @@ struct Player : Entity {
     real32 moveTimer;
 };
 
+struct Arrow : Entity {
+    vec2 velocity;
+    Direction facingDir;
+};
+
 struct Rock : Entity {
     
 };
@@ -144,15 +151,22 @@ struct Physics {
     DynamicArray<CollisionEvent> events;
 };
 
+struct EntityManager {
+    DynamicArray<Arrow> arrows;
+};
+
 struct GameMem {
     MemoryArena arena;
     MemoryArena frameMem;
+
+    EntityManager entityManager;
 
     Player player;
 
     Rock rock;
 
     ZSprite heroSprite;
+    ZSprite arrowSprites[Direction_Count];
 
     ZSprite treeSprite;
     ZSprite grassSprite;
@@ -167,6 +181,8 @@ void MyMosaicInit() {
 
     AllocateMemoryArena(&GM.arena, Megabytes(64));
     AllocateMemoryArena(&GM.frameMem, Megabytes(16));
+
+    GM.entityManager.arrows = MakeDynamicArray<Arrow>(&GM.arena, 32);
 
 #if 0
     {
@@ -191,6 +207,10 @@ void MyMosaicInit() {
     LoadZSpriteFromFile("data/sprites/pool_1.png", &GM.poolSprite, &GM.arena);
 
     LoadZSpriteFromFile("data/sprites/hero_down.png", &GM.heroSprite, &GM.arena);
+    LoadZSpriteFromFile("data/sprites/arrow_east.png", &GM.arrowSprites[East], &GM.arena);
+    LoadZSpriteFromFile("data/sprites/arrow_north.png", &GM.arrowSprites[North], &GM.arena);
+    LoadZSpriteFromFile("data/sprites/arrow_west.png", &GM.arrowSprites[West], &GM.arena);
+    LoadZSpriteFromFile("data/sprites/arrow_south.png", &GM.arrowSprites[South], &GM.arena);
 
 
     {
@@ -219,12 +239,62 @@ void DrawCollider_AABB(vec2 position, vec2 min, vec2 max, vec4 color) {
 
     for (int y = 0; y < dim.y; y++) {
         for (int x = 0; x < dim.x; x++) {
+            if ((y > 0 && y < dim.y - 1) && (x > 0 && x < dim.x - 1)) {
+                continue;
+            }
+            
             SetTileColor(position + V2(x, y) + min, color);
         }
     }
 }
 
-void PlayerUpdate(Player *player) {
+vec2 DirectionToVector(Direction dir) {
+    switch (dir) {
+        default : { assert(false); } break;
+        case East : { return V2(1, 0); } break;
+        case North : { return V2(0, -1); } break;
+        case West : { return V2(-1, 0); } break;
+        case South : { return V2(0, 1); } break;
+    }
+}
+
+Direction VectorToDirection(vec2 v) {
+    if (v.x > 0) {
+        return East;
+    }
+    if (v.x < 0) {
+        return West;
+    }
+    if (v.y < 0) {
+        return North;
+    }
+    if (v.y > 0) {
+        return South;
+    }
+
+    assert(false);
+}
+
+void SpawnArrow(EntityManager *em, vec2 position, vec2 vel) {
+    Arrow arrow = {};
+    arrow.facingDir = VectorToDirection(vel);
+    arrow.position = position;
+    arrow.velocity = vel;
+
+    if (arrow.facingDir == North ||
+        arrow.facingDir == South) {
+        arrow.min = V2(6, 2);
+        arrow.max = V2(10, 15);
+    }
+    else {
+        arrow.min = V2(2, 6);
+        arrow.max = V2(15, 10);
+    }
+
+    PushBack(&em->arrows, arrow);
+}
+
+void UpdatePlayer(Player *player) {
     vec2 moveDir = V2(0);
 
     if (InputHeld(Keyboard, Input_LeftArrow)) {
@@ -240,6 +310,20 @@ void PlayerUpdate(Player *player) {
         moveDir.y = 1;
     }
 
+    if (moveDir.x > 0) {
+        player->facingDir = East;
+    }
+    if (moveDir.x < 0) {
+        player->facingDir = West;
+    }
+
+    if (moveDir.y > 0) {
+        player->facingDir = South;
+    }
+    if (moveDir.y < 0) {
+        player->facingDir = North;
+    }
+
     moveDir = Normalize(moveDir);
 
     if (Abs(moveDir.x) > 0 || Abs(moveDir.y) > 0) {
@@ -247,8 +331,19 @@ void PlayerUpdate(Player *player) {
     }
 
     player->position = player->position + (moveDir * 70 * DeltaTime);
+
+    if (InputPressed(Keyboard, Input_C)) {
+        vec2 vel = DirectionToVector(player->facingDir) * 180;
+        SpawnArrow(&GM.entityManager, player->position, vel);
+    }
 }
 
+void UpdateArrows(EntityManager *em) {
+    for (int i = 0; i < em->arrows.count; i++) {
+        Arrow *arrow = &em->arrows[i];
+        arrow->position = arrow->position + arrow->velocity * DeltaTime;
+    }
+}
 
 void DetectCollisions() {
     Player *player = &GM.player;
@@ -268,7 +363,6 @@ void DetectCollisions() {
     // }
 
     if (TestCircleAABB(playerCenterWorld, player->radius, rockMinWorld, rockMaxWorld, &dir)) {
-        TestCircleAABB(playerCenterWorld, player->radius, rockMinWorld, rockMaxWorld, &dir);
         player->position = player->position + dir;
     }
 }
@@ -280,7 +374,9 @@ void MyMosaicUpdate() {
     int32 Columns = 256 / 16;
     int32 Rows = 256 / 16;
 
-    PlayerUpdate(&GM.player);
+    UpdatePlayer(&GM.player);
+
+    UpdateArrows(&GM.entityManager);
 
     DetectCollisions();
 
@@ -310,6 +406,16 @@ void MyMosaicUpdate() {
         }
     }
 
-    DrawCollider_AABB(GM.rock.position, GM.rock.min, GM.rock.max, V4(0.5f, 0.0f, 0.0f, 1.0f)); 
+    EntityManager *em = &GM.entityManager;
+    
+    for (int i = 0; i < em->arrows.count; i++) {
+        Arrow *arrow = &em->arrows[i];
+        DrawSprite(arrow->position, &GM.arrowSprites[arrow->facingDir]);
+        DrawCollider_AABB(arrow->position, arrow->min, arrow->max, V4(0.5f, 0.0f, 0.0f, 1.0f));
+    }
+
+    // Debug drawing
+    // @TODO: let's have some calls to defer these render commands from gameplay code
+    DrawCollider_AABB(GM.rock.position, GM.rock.min, GM.rock.max, V4(0.5f, 0.0f, 0.0f, 1.0f));
 }
 
