@@ -11,6 +11,8 @@
    Entities that arent just 1 tiles
 
    Switch cooridnate system to be bottom left ugh
+
+   
 */
 
 int32 const TileWidth = 16;
@@ -238,18 +240,13 @@ void PlayerUpdate(Player *player) {
         moveDir.y = 1;
     }
 
+    moveDir = Normalize(moveDir);
+
     if (Abs(moveDir.x) > 0 || Abs(moveDir.y) > 0) {
         player->moveTimer += DeltaTime;
     }
 
-    // real32 pixelsPerSecond = 48;
-    // real32 moveRate = 1.0f / pixelsPerSecond;
-    // if (player->moveTimer >= moveRate) {
-    //     player->moveTimer -= moveRate;
-    //     player->position = player->position + moveDir;
-    // }
-
-    player->position = player->position + (moveDir * 48 * DeltaTime);
+    player->position = player->position + (moveDir * 70 * DeltaTime);
 }
 
 

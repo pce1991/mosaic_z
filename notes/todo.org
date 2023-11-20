@@ -1,5 +1,6 @@
 
 Entity system
+- think I want components so we can have talking trees and such
 Per-screen levels
 Collisions
 - acceleration structure

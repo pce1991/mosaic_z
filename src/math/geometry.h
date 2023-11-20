@@ -801,20 +801,8 @@ bool TestAABBAABB(vec2 aMin, vec2 aMax, vec2 bMin, vec2 bMax, vec2 *dir) {
     return true;
 }
 
-// vec2 ClosestPointOnAABB(vec2 pt, vec2 min, vec2 max) {
-//     return Clamp(pt, min, max);
-// }
-
-inline vec2 ClosestPointOnAABB(vec2 pt, vec2 min, vec2 max) {
-    vec2 result = {};
-    for (int i = 0; i < 2; i++) {
-        real32 v = pt.data[i];
-        if (v < min.data[i]) { v = min.data[i]; }
-        if (v > max.data[i]) { v = max.data[i]; }
-        result.data[i] = v;
-    }
-
-    return result;
+vec2 ClosestPointOnAABB(vec2 pt, vec2 min, vec2 max) {
+    return Clamp(pt, min, max);
 }
 
 bool TestCircleAABB(vec2 center, real32 radius, vec2 min, vec2 max, vec2 *disp) {
