@@ -1,6 +1,9 @@
 
 Entity system
 - think I want components so we can have talking trees and such
+- so I guess we want a Substance/Element component (wood, )
+- and does a tree/rock/pool just become a thing with a Sprite + Body + Element? Because if we want a wish like "turn trees into rocks" we can do that with entities, but it's a bit weirder for "turn all wood into stone" 
+  - I think those wishes aren't super interesting tho, things that move items/characters/world is much more interesting
 Per-screen levels
 Collisions
 - acceleration structure
@@ -8,3 +11,4 @@ Chemistry engine
 Player actions: fire bow
 CPU pixel shaders sound cute
 Animations
+Arrow ammo for scrambly feel

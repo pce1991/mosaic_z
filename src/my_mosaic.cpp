@@ -19,12 +19,52 @@
 int32 const TileWidth = 16;
 int32 const TileHeight = 16;
 
+int32 Columns = 256 / TileWidth;
+int32 Rows = 256 / TileHeight;
+
+
+enum Direction {
+                East,
+                North,
+                West,
+                South,
+                Direction_Count,
+};
+
+
 struct ZSprite {
     int32 width;
     int32 height;
     vec4 *colors;
 };
 
+
+vec2 DirectionToVector(Direction dir) {
+    switch (dir) {
+        default : { assert(false); } break;
+        case East : { return V2(1, 0); } break;
+        case North : { return V2(0, -1); } break;
+        case West : { return V2(-1, 0); } break;
+        case South : { return V2(0, 1); } break;
+    }
+}
+
+Direction VectorToDirection(vec2 v) {
+    if (v.x > 0) {
+        return East;
+    }
+    if (v.x < 0) {
+        return West;
+    }
+    if (v.y < 0) {
+        return North;
+    }
+    if (v.y > 0) {
+        return South;
+    }
+
+    assert(false);
+}
 
 vec2 TilePositionToPixel(int32 x, int32 y) {
     return V2(x * TileWidth, y * TileHeight);
@@ -91,14 +131,6 @@ void LoadZSpriteFromFile(char *path, ZSprite *sprite, MemoryArena *arena) {
     free(data);
 }
 
-enum Direction {
-                East,
-                North,
-                West,
-                South,
-                Direction_Count,
-};
-
 struct Level {
     
 };
@@ -141,6 +173,13 @@ struct Rock : Entity {
     
 };
 
+struct Tree : Entity {
+    
+};
+
+struct Grass : Entity {
+    
+};
     
 struct CollisionEvent {
     Entity *a;
@@ -153,6 +192,10 @@ struct Physics {
 
 struct EntityManager {
     DynamicArray<Arrow> arrows;
+
+    DynamicArray<Grass> grass;
+    DynamicArray<Rock> rocks;
+    DynamicArray<Tree> trees;
 };
 
 struct GameMem {
@@ -176,6 +219,49 @@ struct GameMem {
 
 GameMem GM = {};
 
+
+void SpawnRock(EntityManager *em, vec2 position) {
+    Rock rock = {};
+    rock.position = position;
+    rock.min = V2(1, 8);
+    rock.max = V2(15, 16);
+    PushBack(&em->rocks, rock);
+}
+
+void SpawnTree(EntityManager *em, vec2 position) {
+    Tree tree = {};
+    tree.position = position;
+    tree.min = V2(0, 0);
+    tree.max = V2(32, 32);
+    PushBack(&em->trees, tree);
+}
+
+void SpawnGrass(EntityManager *em, vec2 position) {
+    Grass grass = {};
+    grass.position = position;
+    PushBack(&em->grass, grass);
+}
+
+void SpawnArrow(EntityManager *em, vec2 position, vec2 vel) {
+    Arrow arrow = {};
+    arrow.facingDir = VectorToDirection(vel);
+    arrow.position = position;
+    arrow.velocity = vel;
+
+    if (arrow.facingDir == North ||
+        arrow.facingDir == South) {
+        arrow.min = V2(6, 2);
+        arrow.max = V2(10, 15);
+    }
+    else {
+        arrow.min = V2(2, 6);
+        arrow.max = V2(15, 10);
+    }
+
+    PushBack(&em->arrows, arrow);
+}
+
+
 void MyMosaicInit() {
     SetMosaicGridSize(256, 256);
 
@@ -183,6 +269,9 @@ void MyMosaicInit() {
     AllocateMemoryArena(&GM.frameMem, Megabytes(16));
 
     GM.entityManager.arrows = MakeDynamicArray<Arrow>(&GM.arena, 32);
+    GM.entityManager.trees = MakeDynamicArray<Tree>(&GM.arena, 64);
+    GM.entityManager.grass = MakeDynamicArray<Grass>(&GM.arena, 256);
+    GM.entityManager.rocks = MakeDynamicArray<Rock>(&GM.arena, 32);
 
 #if 0
     {
@@ -212,7 +301,8 @@ void MyMosaicInit() {
     LoadZSpriteFromFile("data/sprites/arrow_west.png", &GM.arrowSprites[West], &GM.arena);
     LoadZSpriteFromFile("data/sprites/arrow_south.png", &GM.arrowSprites[South], &GM.arena);
 
-
+    EntityManager *em = &GM.entityManager;
+    
     {
         Player *player = &GM.player;
         player->position = V2(100, 200);
@@ -225,12 +315,19 @@ void MyMosaicInit() {
 
     {
         Rock *rock = &GM.rock;
-        rock->position = TilePositionToPixel(12, 9);
-        // rock->min = V2(0, 6);
-        // rock->max = V2(14, 16);
+        SpawnRock(em, TilePositionToPixel(12, 9));
+    }
 
-        rock->min = V2(1, 8);
-        rock->max = V2(15, 16);
+    for (int y = 0; y < Rows; y++) {
+        for (int x = 0; x < Columns; x++) {
+            SpawnGrass(em, TilePositionToPixel(x, y));
+        }
+    }
+
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 10; x++) {
+            SpawnTree(em, TilePositionToPixel(x * 2, y * 2));
+        }
     }
 }
 
@@ -246,52 +343,6 @@ void DrawCollider_AABB(vec2 position, vec2 min, vec2 max, vec4 color) {
             SetTileColor(position + V2(x, y) + min, color);
         }
     }
-}
-
-vec2 DirectionToVector(Direction dir) {
-    switch (dir) {
-        default : { assert(false); } break;
-        case East : { return V2(1, 0); } break;
-        case North : { return V2(0, -1); } break;
-        case West : { return V2(-1, 0); } break;
-        case South : { return V2(0, 1); } break;
-    }
-}
-
-Direction VectorToDirection(vec2 v) {
-    if (v.x > 0) {
-        return East;
-    }
-    if (v.x < 0) {
-        return West;
-    }
-    if (v.y < 0) {
-        return North;
-    }
-    if (v.y > 0) {
-        return South;
-    }
-
-    assert(false);
-}
-
-void SpawnArrow(EntityManager *em, vec2 position, vec2 vel) {
-    Arrow arrow = {};
-    arrow.facingDir = VectorToDirection(vel);
-    arrow.position = position;
-    arrow.velocity = vel;
-
-    if (arrow.facingDir == North ||
-        arrow.facingDir == South) {
-        arrow.min = V2(6, 2);
-        arrow.max = V2(10, 15);
-    }
-    else {
-        arrow.min = V2(2, 6);
-        arrow.max = V2(15, 10);
-    }
-
-    PushBack(&em->arrows, arrow);
 }
 
 void UpdatePlayer(Player *player) {
@@ -346,6 +397,8 @@ void UpdateArrows(EntityManager *em) {
 }
 
 void DetectCollisions() {
+    EntityManager *em = &GM.entityManager;
+    
     Player *player = &GM.player;
     Rock *rock = &GM.rock;
 
@@ -354,16 +407,28 @@ void DetectCollisions() {
     vec2 playerMinWorld = player->position + player->min;
     vec2 playerMaxWorld = player->position + player->max;
 
-    vec2 rockMinWorld = rock->position + rock->min;
-    vec2 rockMaxWorld = rock->position + rock->max;
+    for (int i = 0; i < em->rocks.count; i++) {
+        Rock *rock = &em->rocks[i];
 
-    vec2 dir = V2(0);
-    // if (TestAABBAABB(playerMinWorld, playerMaxWorld, rockMinWorld, rockMaxWorld, &dir)) {
-    //     player->position = player->position + dir;
-    // }
+        vec2 rockMinWorld = rock->position + rock->min;
+        vec2 rockMaxWorld = rock->position + rock->max;
 
-    if (TestCircleAABB(playerCenterWorld, player->radius, rockMinWorld, rockMaxWorld, &dir)) {
-        player->position = player->position + dir;
+        vec2 dir = V2(0);
+        if (TestCircleAABB(playerCenterWorld, player->radius, rockMinWorld, rockMaxWorld, &dir)) {
+            player->position = player->position + dir;
+        }
+    }
+
+    for (int i = 0; i < em->trees.count; i++) {
+        Tree *tree = &em->trees[i];
+
+        vec2 treeMinWorld = tree->position + tree->min;
+        vec2 treeMaxWorld = tree->position + tree->max;
+
+        vec2 dir = V2(0);
+        if (TestCircleAABB(playerCenterWorld, player->radius, treeMinWorld, treeMaxWorld, &dir)) {
+            player->position = player->position + dir;
+        }
     }
 }
 
@@ -371,8 +436,7 @@ void DetectCollisions() {
 void MyMosaicUpdate() {
     //ClearTiles(V4(0.08f, 0.5f, 0.17f, 1.0f));
 
-    int32 Columns = 256 / 16;
-    int32 Rows = 256 / 16;
+    EntityManager *em = &GM.entityManager;
 
     UpdatePlayer(&GM.player);
 
@@ -380,10 +444,9 @@ void MyMosaicUpdate() {
 
     DetectCollisions();
 
-    for (int y = 0; y < Rows; y++) {
-        for (int x = 0; x < Columns; x++) {
-            DrawSprite(TilePositionToPixel(x, y), &GM.grassSprite);        
-        }
+    for (int i = 0; i < em->grass.count; i++) {
+        Grass *grass = &em->grass[i];
+        DrawSprite(grass->position, &GM.grassSprite);
     }
 
     DrawSprite(GM.player.position, &GM.heroSprite);
@@ -392,30 +455,36 @@ void MyMosaicUpdate() {
     // DrawSprite(TilePositionToPixel(8, 12), &GM.rockSprite);
     // DrawSprite(TilePositionToPixel(9, 12), &GM.rockSprite);
 
-    DrawSprite(GM.rock.position, &GM.rockSprite);
-
     DrawSprite(TilePositionToPixel(3, 14), &GM.poolSprite);
     DrawSprite(TilePositionToPixel(4, 14), &GM.poolSprite);
     DrawSprite(TilePositionToPixel(5, 14), &GM.poolSprite);
     DrawSprite(TilePositionToPixel(4, 13), &GM.poolSprite);
     DrawSprite(TilePositionToPixel(5, 13), &GM.poolSprite); 
 
-    for (int y = 0; y < 4; y++) {
-        for (int x = 0; x < 10; x++) {
-            DrawSprite(TilePositionToPixel(x * 2, y * 2), &GM.treeSprite);
-        }
+    // for (int y = 0; y < 4; y++) {
+    //     for (int x = 0; x < 10; x++) {
+    //         DrawSprite(TilePositionToPixel(x * 2, y * 2), &GM.treeSprite);
+    //     }
+    // }
+
+    for (int i = 0; i < em->trees.count; i++) {
+        Tree *tree = &em->trees[i];
+        DrawSprite(tree->position, &GM.treeSprite);
     }
 
-    EntityManager *em = &GM.entityManager;
+    for (int i = 0; i < em->rocks.count; i++) {
+        Rock *rock = &em->rocks[i];
+        DrawSprite(rock->position, &GM.rockSprite);
+    }
     
     for (int i = 0; i < em->arrows.count; i++) {
         Arrow *arrow = &em->arrows[i];
         DrawSprite(arrow->position, &GM.arrowSprites[arrow->facingDir]);
-        DrawCollider_AABB(arrow->position, arrow->min, arrow->max, V4(0.5f, 0.0f, 0.0f, 1.0f));
+        //DrawCollider_AABB(arrow->position, arrow->min, arrow->max, V4(0.5f, 0.0f, 0.0f, 1.0f));
     }
 
     // Debug drawing
     // @TODO: let's have some calls to defer these render commands from gameplay code
-    DrawCollider_AABB(GM.rock.position, GM.rock.min, GM.rock.max, V4(0.5f, 0.0f, 0.0f, 1.0f));
+    //DrawCollider_AABB(GM.rock.position, GM.rock.min, GM.rock.max, V4(0.5f, 0.0f, 0.0f, 1.0f));
 }
 
